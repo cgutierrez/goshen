@@ -1,0 +1,21 @@
+Host server-1
+  HostName server-1.example.com
+  User user
+  Port 22
+  IdentityFile ~/.ssh/example_rsa
+  LogLevel FATAL
+
+Host server-2
+  HostName server-2.example.com
+  User user
+  Port 22
+  IdentityFile ~/.ssh/example_rsa
+  LogLevel FATAL
+
+
+Host server-3
+  HostName server-2.example.com
+  User user
+  Port 22
+  IdentityFile ~/.ssh/example_rsa
+  LogLevel FATAL
