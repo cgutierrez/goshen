@@ -1,120 +1,115 @@
 package goshen
 
 import (
-  "os"
-  "bufio"
-  "io/ioutil"
-  "fmt"
-  "log"
-  "reflect"
+	"bufio"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"reflect"
 )
 
 type SshConfig struct {
-  Entries []*SshConfigEntry
-  Path string
+	Entries []*SshConfigEntry
+	Path    string
 }
 
-func writeConfigFile(configFile string, lines []string) (error) {
-  file, err := os.Create(configFile)
+func writeConfigFile(configFile string, lines []string) error {
+	file, err := os.Create(configFile)
 
-  if err != nil {
-    return err
-  }
+	if err != nil {
+		return err
+	}
 
-  defer file.Close()
+	defer file.Close()
 
-  writer := bufio.NewWriter(file)
-  defer writer.Flush()
+	writer := bufio.NewWriter(file)
+	defer writer.Flush()
 
-  for _, line := range lines {
-    _, err := writer.WriteString(line)
+	for _, line := range lines {
+		_, err := writer.WriteString(line)
 
-    if err != nil {
-      return err
-    }
-  }
+		if err != nil {
+			return err
+		}
+	}
 
-  return nil
+	return nil
 }
 
-func (config *SshConfig) Save(outputPath string) (error) {
+func (config *SshConfig) Save(outputPath string) error {
 
-  lines := make([]string, 0)
+	lines := make([]string, 0)
 
-  for _, entry := range config.Entries {
+	for _, entry := range config.Entries {
 
-    // skip creating the entry if it doesn't have a Host or Match directive
-    if entry.Match == "" && entry.Host == "" {
-      continue
-    }
+		// skip creating the entry if it doesn't have a Host or Match directive
+		if entry.Match == "" && entry.Host == "" {
+			continue
+		}
 
-    if entry.Match != "" {
-      lines = append(lines, fmt.Sprintf("%s %s\n", "Match", entry.Match))
-    }
+		if entry.Match != "" {
+			lines = append(lines, fmt.Sprintf("%s %s\n", "Match", entry.Match))
+		}
 
-    if entry.Host != "" {
-      lines = append(lines, fmt.Sprintf("%s %s\n", "Host", entry.Host))
-    }
+		if entry.Host != "" {
+			lines = append(lines, fmt.Sprintf("%s %s\n", "Host", entry.Host))
+		}
 
-    structValue := reflect.ValueOf(entry).Elem()
-    entryType := structValue.Type()
+		structValue := reflect.ValueOf(entry).Elem()
+		entryType := structValue.Type()
 
-    for i := 0; i < structValue.NumField(); i++ {
-      if entryType.Field(i).Name == "Host" || entryType.Field(i).Name == "Match" || entryType.Field(i).Name == "additional" {
-        continue
-      }
+		for i := 0; i < structValue.NumField(); i++ {
+			if entryType.Field(i).Name == "Host" || entryType.Field(i).Name == "Match" || entryType.Field(i).Name == "additional" {
+				continue
+			}
 
-      structFieldValue := structValue.FieldByName(entryType.Field(i).Name)
+			structFieldValue := structValue.FieldByName(entryType.Field(i).Name)
 
-      // keep the field from written if it doesn't have a value
-      if structFieldValue.String() == "" {
-        continue
-      }
+			// keep the field from written if it doesn't have a value
+			if structFieldValue.String() == "" {
+				continue
+			}
 
-      lines = append(lines, fmt.Sprintf("%s %s\n", entryType.Field(i).Name, structFieldValue.String()))
-    }
+			lines = append(lines, fmt.Sprintf("%s %s\n", entryType.Field(i).Name, structFieldValue.String()))
+		}
 
-    // write additional keys
-    for key, val := range entry.additional {
-      lines = append(lines, fmt.Sprintf("%s %s\n", key, val))
-    }
+		// write additional keys
+		for key, val := range entry.additional {
+			lines = append(lines, fmt.Sprintf("%s %s\n", key, val))
+		}
 
-    // separate each entry with double new lines
-    lines = append(lines, "\n")
-  }
+		// separate each entry with double new lines
+		lines = append(lines, "\n")
+	}
 
+	if outputPath == "" {
+		outputPath = config.Path
+	}
 
-  if outputPath == "" {
-    outputPath = config.Path
-  }
+	writeConfigFile(outputPath, lines)
 
-  writeConfigFile(outputPath, lines)
-
-  return nil
+	return nil
 }
 
+func NewSshConfig(configPath string) *SshConfig {
 
+	if len(configPath) == 0 {
+		return &SshConfig{}
+	}
 
+	configFile, err := ioutil.ReadFile(configPath)
 
+	if err != nil {
+		log.Fatal(err)
+	}
 
-func NewSshConfig(configPath string) (*SshConfig) {
+	entries, err := parseConfig(configFile)
 
-  if len(configPath) == 0 {
-    return &SshConfig{}
-  }
+	if err != nil {
+		log.Fatal(err)
+	}
 
-  configFile, err := ioutil.ReadFile(configPath)
-
-  if err != nil {
-    log.Fatal(err)
-  }
-
-  entries, err := parseConfig(configFile)
-
-  if err != nil {
-    log.Fatal(err)
-  }
-
-  config := &SshConfig{ Path: configPath, Entries: entries }
-  return config
+	config := &SshConfig{Path: configPath, Entries: entries}
+	return config
 }
