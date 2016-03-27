@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"reflect"
+  "path/filepath"
 )
 
 type SshConfig struct {
@@ -92,11 +93,38 @@ func (config *SshConfig) Save(outputPath string) error {
 	return nil
 }
 
+func (config *SshConfig) MatchHost(hostName string) (*SshConfigEntry) {
+
+  for _, entry := range config.Entries {
+    hostMatches, err := filepath.Match(entry.Host, hostName)
+    if err != nil {
+      continue
+    }
+
+    if hostMatches {
+      return entry
+    }
+  }
+
+  return nil
+}
+
 func NewSshConfig(configPath string) *SshConfig {
 
 	if len(configPath) == 0 {
 		return &SshConfig{}
 	}
+
+  configPath, err := expandHomeDir(configPath)
+
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  // if the config file doesn't exist, just return a config instance
+  if _, err := os.Stat(configPath); os.IsNotExist(err) {
+    return &SshConfig{}
+  }
 
 	configFile, err := ioutil.ReadFile(configPath)
 
