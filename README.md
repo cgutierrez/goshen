@@ -7,7 +7,7 @@ config := goshen.NewSshConfig("~/.ssh/config")
 ## Matching a host
 Once you've created an instance of an SSH config, you can search for hosts using the `MatchHost` method.
 
-### sample config
+Sample SSH config
 ```
 Host server-1
   HostName server-1.example.com
